@@ -1,8 +1,8 @@
-<?php 
-	include('../dbconfig.php');
-	session_start();
-	
-	unset($_SESSION['user']);
-	header('location:../index.php');
+<?php
+require_once __DIR__ . '/../dbconfig.php';
 
-?>
+if (is_post()) {
+    csrf_verify();
+    logout();
+}
+redirect('../index.php');

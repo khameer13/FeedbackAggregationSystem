@@ -1,136 +1,83 @@
-<?php 
-extract($_POST);
-if(isset($update))
-{
-//dob
-$dob=$yy."-".$mm."-".$dd;
-//hobbies
-$hob=implode(",",$hob);
+<?php
+defined('APP_BOOTSTRAPPED') || exit;
 
-$query="update user set name='$n',mobile='$mob',gender='$gen',hobbies='$hob',dob='$dob' where email='".$_SESSION['user']."'";
+$message = '';
+$v = $student;
+$v['hobbies'] = $student['hobbies'] !== '' ? explode(',', $student['hobbies']) : [];
 
-//$query="insert into user values('','$n','$e','$pass','$mob','$gen','$hob','$imageName','$dob',now())";
-mysqli_query($conn,$query);
+if (is_post()) {
+    csrf_verify();
+    foreach (['name', 'mobile', 'gender', 'dob'] as $key) {
+        $v[$key] = post($key);
+    }
+    $v['hobbies'] = array_values(array_intersect(array_keys(HOBBIES), (array) ($_POST['hobbies'] ?? [])));
+    $dob = DateTime::createFromFormat('!Y-m-d', $v['dob']);
 
+    $errors = [];
+    if ($v['name'] === '' || mb_strlen($v['name']) > 40) {
+        $errors[] = 'Please enter your name (up to 40 characters).';
+    }
+    if (!valid_mobile($v['mobile'])) {
+        $errors[] = 'Mobile number must be 10 digits.';
+    }
+    if (!in_array($v['gender'], ['m', 'f'], true)) {
+        $errors[] = 'Please select your gender.';
+    }
+    if (!$dob || $dob->format('Y-m-d') !== $v['dob'] || $dob > new DateTime('-10 years')) {
+        $errors[] = 'Please enter a valid date of birth.';
+    }
+    $image = null;
+    if (!$errors) {
+        [$image, $uploadError] = store_avatar($_FILES['image'] ?? []);
+        if ($uploadError) {
+            $errors[] = $uploadError;
+        }
+    }
 
-
-$err="<font color='blue'>Profie updated successfully !!</font>";
-
-
+    if ($errors) {
+        $message = alert(implode(' ', $errors));
+    } else {
+        db_exec(
+            'UPDATE students SET name = ?, mobile = ?, gender = ?, hobbies = ?, dob = ? WHERE id = ?',
+            [$v['name'], $v['mobile'], $v['gender'], implode(',', $v['hobbies']), $v['dob'], $student['id']]
+        );
+        if ($image !== null) {
+            if ($student['image'] && preg_match('/^[a-f0-9]{32}\.(jpg|png|gif|webp)$/', $student['image'])) {
+                @unlink(AVATAR_DIR . '/' . $student['image']);
+            }
+            db_exec('UPDATE students SET image = ? WHERE id = ?', [$image, $student['id']]);
+        }
+        $_SESSION['flash'] = 'Profile updated successfully.';
+        redirect('index.php?page=update_profile');
+    }
 }
 
-
-//select old data
-//check user alereay exists or not
-$sql=mysqli_query($conn,"select * from user where email='".$_SESSION['user']."'");
-$res=mysqli_fetch_assoc($sql);
-
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
 ?>
-<h2 align="center">Update Your Profile</h2>
-
-		<form method="post">
-			<table class="table table-bordered">
-	<Tr>
-		<Td colspan="2"><?php echo @$err;?></Td>
-	</Tr>
-				
-				<tr>
-					<td>Enter Your name</td>
-					<Td><input class="form-control" value="<?php echo $res['name'];?>"  type="text" name="n"/></td>
-				</tr>
-				<tr>
-					<td>Enter Your email </td>
-					<Td><input class="form-control" type="email" readonly="true" value="<?php echo $res['email'];?>"  name="e"/></td>
-				</tr>
-				
-				
-				<tr>
-					<td>Enter Your Mobile </td>
-					<Td><input class="form-control" type="text" value="<?php echo $res['mobile'];?>"  name="mob"/></td>
-				</tr>
-				
-				<tr>
-					<td>Select Your Gender</td>
-					<Td>
-				Male<input type="radio" <?php if($res['gender']=="m"){echo "checked";} ?> name="gen" value="m"/>
-				Female<input type="radio" <?php if($res['gender']=="f"){echo "checked";} ?> name="gen" value="f"/>	
-					</td>
-				</tr>
-				
-				<tr>
-					<td>Choose Your hobbies</td>
-					<Td>
-					<?php 
-					$arrr=explode(",",$res['hobbies']);
-					?>
-					
-					
-					Reading<input value="reading" <?php if(in_array("reading",$arrr)){echo "checked";} ?> type="checkbox" name="hob[]"/>
-					Singing<input value="singin" <?php if(in_array("singin",$arrr)){echo "checked";} ?> type="checkbox" name="hob[]"/>
-					Playing<input value="playing" <?php if(in_array("playing",$arrr)){echo "checked";} ?> type="checkbox" name="hob[]"/>
-					</td>
-				</tr>
-				
-				
-				<tr>
-					<td>Enter Your DOB</td>
-					<?php 
-					$arrr1=explode("-",$res['dob']);
-					?>
-					<Td>
-					<select class="form-control" style="width:100px;float:left" name="yy">
-					<option value="">Year</option>
-					<?php 
-					for($i=1950;$i<=2016;$i++)
-					{
-					?>
-					<option <?php if($arrr1[0]==$i){echo "selected";} ?>><?php echo $i; ?></option>
-					<?php }					
-					?>
-					
-					</select>
-					
-					<select class="form-control" style="width:100px;float:left" name="mm">
-					<option value="">Month</option>
-					<?php 
-					for($i=1;$i<=12;$i++)
-					{
-					?>
-					<option <?php if($arrr1[1]==$i){echo "selected";} ?>><?php echo $i; ?></option>
-					<?php }					
-					?>
-					}					
-					?>
-					
-					</select>
-					
- 					
-					<select class="form-control" style="width:100px;float:left" name="dd">
-					<option value="">Date</option>
-					<?php 
-					for($i=1;$i<=31;$i++)
-					{
-					?>
-					<option <?php if($arrr1[2]==$i){echo "selected";} ?>><?php echo $i; ?></option>
-					<?php }					
-					?>
-					}					
-					?>
-					
-					</select>
-					
-					</td>
-				</tr>
-				
-				<tr>
-					
-					
-<Td colspan="2" align="center">
-<input type="submit" class="btn btn-default" value="Update My Profile" name="update"/>
-<input type="reset" class="btn btn-default" value="Reset"/>
-				
-					</td>
-				</tr>
-			</table>
-		</form>
-	
+<h2 class="page-header">Update your profile</h2>
+<div class="col-sm-8">
+    <?= $flash ? alert($flash, 'success') : '' ?>
+    <?= $message ?>
+    <form method="post" action="index.php?page=update_profile" enctype="multipart/form-data">
+        <?= csrf_field() ?>
+        <div class="form-group"><label>Name</label>
+            <input class="form-control" type="text" name="name" maxlength="40" value="<?= e($v['name']) ?>" required></div>
+        <div class="form-group"><label>Email</label>
+            <input class="form-control" type="email" value="<?= e($student['email']) ?>" readonly></div>
+        <div class="form-group"><label>Mobile</label>
+            <input class="form-control" type="tel" name="mobile" pattern="[0-9]{10}" value="<?= e($v['mobile']) ?>" required></div>
+        <div class="form-group"><label>Gender</label><br>
+            <label class="radio-inline"><input type="radio" name="gender" value="m" <?= $v['gender'] === 'm' ? 'checked' : '' ?> required> Male</label>
+            <label class="radio-inline"><input type="radio" name="gender" value="f" <?= $v['gender'] === 'f' ? 'checked' : '' ?>> Female</label></div>
+        <div class="form-group"><label>Hobbies</label><br>
+            <?php foreach (HOBBIES as $key => $label): ?>
+                <label class="checkbox-inline"><input type="checkbox" name="hobbies[]" value="<?= e($key) ?>" <?= in_array($key, $v['hobbies'], true) ? 'checked' : '' ?>> <?= e($label) ?></label>
+            <?php endforeach; ?></div>
+        <div class="form-group"><label>Date of birth</label>
+            <input class="form-control" type="date" name="dob" value="<?= e($v['dob']) ?>" required></div>
+        <div class="form-group"><label>New profile image (optional, max 2 MB)</label>
+            <input class="form-control" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp"></div>
+        <button type="submit" class="btn btn-primary">Update my profile</button>
+    </form>
+</div>

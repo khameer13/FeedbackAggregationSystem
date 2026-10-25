@@ -1,0 +1,11 @@
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# User uploads (never commit personal data)
+images/avatars/
+
+# Local configuration
+.env

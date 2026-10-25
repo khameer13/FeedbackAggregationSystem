@@ -1,86 +1,58 @@
 <?php
-	extract($_POST);
-	if(isset($save))
-	{	
-	
-	mysqli_query($conn,"update faculty set Name='$n',designation	='$desg',programme='$prg',semester='$sem',mobile='$mob',	password='$pass' where email='".$_SESSION['faculty_login']."'");	
+defined('APP_BOOTSTRAPPED') || exit;
 
-$err="<font color='green'>Faculty Details updated</font>";
+$message = '';
+$v = $faculty;
+if (is_post()) {
+    csrf_verify();
+    foreach (['name', 'designation', 'programme', 'semester', 'mobile'] as $key) {
+        $v[$key] = post($key);
+    }
 
-	}
+    $errors = [];
+    if ($v['name'] === '' || $v['designation'] === '' || $v['programme'] === '') {
+        $errors[] = 'Name, designation and programme are required.';
+    }
+    if (!in_array($v['semester'], SEMESTERS, true)) {
+        $errors[] = 'Please select a semester.';
+    }
+    if (!valid_mobile($v['mobile'])) {
+        $errors[] = 'Mobile number must be 10 digits.';
+    }
 
-$con=mysqli_query($conn,"select * from faculty where email='".$_SESSION['faculty_login']."'");
-
-$res=mysqli_fetch_assoc($con);	
-//print_r($res);
+    if ($errors) {
+        $message = alert(implode(' ', $errors));
+    } else {
+        db_exec(
+            'UPDATE faculty SET name = ?, designation = ?, programme = ?, semester = ?, mobile = ? WHERE id = ?',
+            [$v['name'], $v['designation'], $v['programme'], $v['semester'], $v['mobile'], $faculty['id']]
+        );
+        $message = alert('Profile updated.', 'success');
+    }
+}
 ?>
-
-
-<!--<h3 class="page-header">Update Profile</h3>
---><div class="col-lg-8" style="margin:15px;">
-	<form method="post">
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label><?php echo @$err;?></label>
-        </div>
-   	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Name:</label>
-            	<input type="text" value="<?php echo @$res['Name'];?>" name="n" class="form-control" required>
-        </div>
-   	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Designation:</label>
-            	<input type="text" value="<?php echo @$res['designation'];?>" name="desg" class="form-control" required>
-        </div>
-   	</div>
- 	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Email :</label>
-            	<input type="email" value="<?php echo @$res['email'];?>"  name="email" readonly="true" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Password :</label>
-          <input type="text" value="<?php echo @$res['password'];?>"  name="pass" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Programme:</label>
-  <input type="text"  name="prg" value="<?php echo @$res['programme'];?>" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Semester</label>
-  <input type="text"  name="sem" value="<?php echo @$res['semester'];?>" class="form-control" required>
-        </div>
-    </div>
-                  
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Mobile Number:</label>
-            	<input type="number" id="mob" value="<?php echo @$res['mobile'];?>" class="form-control" maxlength="10" name="mob"  required>
-        </div>
-  	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-            	<input type="submit" class="btn btn-success" name="save" value="Update  Profile">
-        </div>
-  	</div>
-	</form>
-
-
+<h2 class="page-header">Update profile</h2>
+<div class="col-lg-8">
+    <?= $message ?>
+    <form method="post" action="index.php?page=update_profile">
+        <?= csrf_field() ?>
+        <div class="form-group"><label>Name</label>
+            <input type="text" name="name" class="form-control" maxlength="50" value="<?= e($v['name']) ?>" required></div>
+        <div class="form-group"><label>Designation</label>
+            <input type="text" name="designation" class="form-control" maxlength="100" value="<?= e($v['designation']) ?>" required></div>
+        <div class="form-group"><label>Email</label>
+            <input type="email" class="form-control" value="<?= e($faculty['email']) ?>" readonly></div>
+        <div class="form-group"><label>Programme</label>
+            <input type="text" name="programme" class="form-control" maxlength="50" value="<?= e($v['programme']) ?>" required></div>
+        <div class="form-group"><label>Semester</label>
+            <select name="semester" class="form-control" required>
+                <?php foreach (SEMESTERS as $s): ?>
+                    <option value="<?= e($s) ?>" <?= $v['semester'] === $s ? 'selected' : '' ?>><?= e(strtoupper($s)) ?></option>
+                <?php endforeach; ?>
+            </select></div>
+        <div class="form-group"><label>Mobile number</label>
+            <input type="tel" name="mobile" class="form-control" pattern="[0-9]{10}" value="<?= e($v['mobile']) ?>" required></div>
+        <p class="text-muted">To change your password use <a href="index.php?page=update_password">Update password</a>.</p>
+        <button type="submit" class="btn btn-success">Update profile</button>
+    </form>
 </div>

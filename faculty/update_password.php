@@ -1,77 +1,35 @@
-<?php 
-echo $_SESSION['faculty_login'];
-extract($_POST);
-if(isset($save))
-{
+<?php
+defined('APP_BOOTSTRAPPED') || exit;
 
-	if($np=="" || $cp=="" || $op=="")
-	{
-	$err="<font color='red'>fill all the fileds first</font>";	
-	}
-	else
-	{
+$message = '';
+if (is_post()) {
+    csrf_verify();
+    $old     = (string) ($_POST['old_password'] ?? '');
+    $new     = (string) ($_POST['new_password'] ?? '');
+    $confirm = (string) ($_POST['confirm_password'] ?? '');
 
-$sql=mysqli_query($conn,"select * from faculty where password='$op' and email='".$_SESSION['faculty_login']."'");
-$r=mysqli_num_rows($sql);
-if($r==true)
-{
-
-	if($np==$cp)
-	{
-	$sql=mysqli_query($conn,"update faculty set password='$np' where email='".$_SESSION['faculty_login']."'");
-	
-	$err="<font color='blue'>Password updated </font>";
-	}
-	else
-	{
-	$err="<font color='red'>New  password not matched with Confirm Password </font>";
-	}
+    $hash = db_value('SELECT password_hash FROM faculty WHERE id = ?', [$faculty['id']]);
+    if (!verify_password($old, $hash)) {
+        $message = alert('Wrong old password.');
+    } elseif ($problem = password_problem($new, $confirm)) {
+        $message = alert($problem);
+    } else {
+        db_exec('UPDATE faculty SET password_hash = ? WHERE id = ?', [password_hash($new, PASSWORD_DEFAULT), $faculty['id']]);
+        $message = alert('Password updated.', 'success');
+    }
 }
-
-else
-{
-
-$err="<font color='red'>Wrong Old Password </font>";
-
-}
-}
-}
-
 ?>
-<h2 align="center">Update Password</h2>
-<form method="post">
-	
-	<div class="row">
-		<div class="col-sm-4"></div>
-		<div class="col-sm-4"><?php echo @$err;?></div>
-	</div>
-	
-	
-	
-	<div class="row" style="margin-top:10px">
-		<div class="col-sm-4">Enter YOur Old</div>
-		<div class="col-sm-5">
-		<input type="password" name="op" class="form-control"/></div>
-	</div>
-	
-	<div class="row" style="margin-top:10px">
-		<div class="col-sm-4">Enter YOur New Password</div>
-		<div class="col-sm-5">
-		<input type="password" name="np" class="form-control"/></div>
-	</div>
-	
-	<div class="row" style="margin-top:10px">
-		<div class="col-sm-4">Enter YOur Confirm Password</div>
-		<div class="col-sm-5">
-		<input type="password" name="cp" class="form-control"/></div>
-	</div>
-	<div class="row" style="margin-top:10px">
-		<div class="col-sm-2"></div>
-		<div class="col-sm-8">
-		
-		
-		<input type="submit" value="Update Password" name="save" class="btn btn-success"/>
-		<input type="reset" class="btn btn-success"/>
-		</div>
-	</div>
-</form>	
+<h2 class="page-header">Update password</h2>
+<div class="col-sm-6">
+    <?= $message ?>
+    <form method="post" action="index.php?page=update_password">
+        <?= csrf_field() ?>
+        <div class="form-group"><label>Old password</label>
+            <input type="password" name="old_password" class="form-control" required></div>
+        <div class="form-group"><label>New password (at least <?= PASSWORD_MIN_LENGTH ?> characters)</label>
+            <input type="password" name="new_password" class="form-control" minlength="<?= PASSWORD_MIN_LENGTH ?>" required></div>
+        <div class="form-group"><label>Confirm new password</label>
+            <input type="password" name="confirm_password" class="form-control" minlength="<?= PASSWORD_MIN_LENGTH ?>" required></div>
+        <button type="submit" class="btn btn-success">Update password</button>
+    </form>
+</div>
