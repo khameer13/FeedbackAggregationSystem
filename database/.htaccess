@@ -1,0 +1,2 @@
+# Schema and CLI scripts are not meant to be served over HTTP.
+Require all denied
