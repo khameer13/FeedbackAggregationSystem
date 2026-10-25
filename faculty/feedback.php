@@ -1,92 +1,43 @@
-<?php 
-$q=mysqli_query($conn,"select * from feedback where faculty_id='".$_SESSION['faculty_login']."'");
-$r=mysqli_num_rows($q);
-if($r==false)
-{
-echo "<h3 style='color:Red'>No any records found ! </h3>";
+<?php
+defined('APP_BOOTSTRAPPED') || exit;
+
+// Feedback is shown anonymously to faculty: no student names or emails.
+$rows = db_all('SELECT * FROM feedback WHERE faculty_id = ? ORDER BY created_at DESC', [$faculty['id']]);
+$averages = [];
+if ($rows) {
+    for ($q = 1; $q <= 12; $q++) {
+        $averages[$q] = array_sum(array_column($rows, 'q' . $q)) / count($rows);
+    }
 }
-else
-{
 ?>
-
-<script type="text/javascript">
-function deletes(id)
-{
-	a=confirm('Are You Sure To Remove This Record ?')
-	 if(a)
-     {
-        window.location.href='delete_feedback.php?id='+id;
-     }
-}
-</script>	
-
-
-<div class="row">
-	<div class="col-sm-12" style="color:orange;">
-		<h1 align="center" >Feedback</h1>
-	</div>
-</div>
-<div class="row">
-
-<div class="col-sm-12">
-
-<table class="table table-bordered">
-
-	<thead >
-	
-	<tr class="success">
-		<th>Sr.No</th>
-		<th>Student</th>
-		<th>Teacher</th>
-		<th>Quest1</th>
-		<th>Quest2</th>
-		<th>Quest3</th>
-		<th>Quest4</th>
-		<th>Quest5</th>
-		<th>Quest6</th>
-		<th>Quest7</th>
-		<th>Quest8</th>
-		<th>Quest9</th>
-		<th>Quest10</th>
-		<th>Quest11</th>
-		<th>Quest12</th>
-		<th>Quest13</th>
-		<th>Quest14</th>
-		</tr>
-		</thead>
-		
-		<?php
-		$i=1;
-	while($row=mysqli_fetch_array($q))
-		{
-			echo "<tr>";
-			echo "<td>".$i."</td>";
-			echo "<td>".$row[1]."</td>";
-			echo "<td>".$row[2]."</td>";
-			echo "<td>".$row[3]."</td>";
-			echo "<td>".$row[4]."</td>";
-			echo "<td>".$row[5]."</td>";
-			echo "<td>".$row[6]."</td>";
-			echo "<td>".$row[7]."</td>";
-			echo "<td>".$row[8]."</td>";
-			echo "<td>".$row[9]."</td>";
-			echo "<td>".$row[10]."</td>";
-			echo "<td>".$row[11]."</td>";
-			echo "<td>".$row[12]."</td>";
-			echo "<td>".$row[13]."</td>";
-			echo "<td>".$row[14]."</td>";
-			echo "<td>".$row[15]."</td>";
-			echo "<td>".$row[16]."</td>";
-			//echo "<td><a href='#' onclick='deletes($row[id])'>Delete</a></td>";
-			echo "</tr>";
-		$i++;
-		}
-		
-		?>
-		
-	
-		
+<h2 class="page-header">My feedback</h2>
+<?php if (!$rows): ?>
+    <h3 class="text-danger">No feedback received yet.</h3>
+<?php else: ?>
+<p class="text-muted"><?= count($rows) ?> response<?= count($rows) === 1 ? '' : 's' ?>. Ratings: 5 = strongly agree &hellip; 1 = strongly disagree. Hover a column header to see the question.</p>
+<div class="table-responsive">
+<table class="table table-bordered table-condensed">
+    <thead>
+    <tr class="success">
+        <th>#</th>
+        <?php for ($q = 1; $q <= 12; $q++): ?><th title="<?= e(question_text($q)) ?>">Q<?= $q ?></th><?php endfor; ?>
+        <th>Liked</th><th>Disliked</th><th>Date</th>
+    </tr>
+    </thead>
+    <tr class="info">
+        <th>Avg</th>
+        <?php for ($q = 1; $q <= 12; $q++): ?><th><?= number_format($averages[$q], 1) ?></th><?php endfor; ?>
+        <th colspan="3"></th>
+    </tr>
+    <?php foreach ($rows as $i => $row): ?>
+    <tr>
+        <td><?= $i + 1 ?></td>
+        <?php for ($q = 1; $q <= 12; $q++): ?><td><?= (int) $row['q' . $q] ?></td><?php endfor; ?>
+        <td><?= nl2br(e($row['liked'])) ?></td>
+        <td><?= nl2br(e($row['disliked'])) ?></td>
+        <td><?= e(substr($row['created_at'], 0, 10)) ?></td>
+    </tr>
+    <?php endforeach; ?>
 </table>
 </div>
-</div>
-<?php }?>
+<?php endif; ?>
