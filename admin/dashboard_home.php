@@ -1,22 +1,13 @@
-<h1 align="center" style="text-decoration:underline"><a href="">Admin Dashboard</a></h1>
-<?php 
-//all complaints
-$qq=mysqli_query($conn,"select * from faculty ");
-$rows=mysqli_num_rows($qq);			
-echo "<h2 style='color:green'>Total Number of Faculty : $rows</h2>";	
+<?php
+defined('APP_BOOTSTRAPPED') || exit;
 
-//all emegency compalints
-$q=mysqli_query($conn,"select * from user");
-$r1=mysqli_num_rows($q);			
-echo "<h2 style='color:orange'>Total Number of Student : $r1</h2>";	
-
-
-//all users
-$q2=mysqli_query($conn,"select * from feedback");
-$r2=mysqli_num_rows($q2);			
-echo "<h2 style='color:black'>Total Number feedback given by users  : $r2</h2>";	
-
-
-					
-
+$facultyCount  = (int) db_value('SELECT COUNT(*) FROM faculty');
+$studentCount  = (int) db_value('SELECT COUNT(*) FROM students');
+$feedbackCount = (int) db_value('SELECT COUNT(*) FROM feedback');
 ?>
+<h1 class="page-header">Admin dashboard</h1>
+<div class="row">
+    <div class="col-sm-4"><div class="panel panel-primary"><div class="panel-heading"><h3><?= $facultyCount ?></h3>Faculty</div></div></div>
+    <div class="col-sm-4"><div class="panel panel-yellow panel-warning"><div class="panel-heading"><h3><?= $studentCount ?></h3>Students</div></div></div>
+    <div class="col-sm-4"><div class="panel panel-green panel-success"><div class="panel-heading"><h3><?= $feedbackCount ?></h3>Feedback forms submitted</div></div></div>
+</div>

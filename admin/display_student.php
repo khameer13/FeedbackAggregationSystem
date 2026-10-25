@@ -1,51 +1,35 @@
-<script type="text/javascript">
-function deletes(id)
-{
-	a=confirm('Are You Sure To Remove This Record ?')
-	 if(a)
-     {
-        window.location.href='delete_student.php?id='+id;
-     }
-}
-</script>	
-
-
 <?php
-	
-	echo "<table class='table table-responsive table-bordered table-striped table-hover' style=margin:15px;>";
-	echo "<tr class='success'>";
-	
-	echo "<th>S.No</th>";
-	echo "<th>Name</th>";
-	echo "<th>Email</th>";
-	echo "<th>Mobile</th>";
-	echo "<th>Programme</th>";
-	echo "<th>Semester</th>";
-	echo "<th>Regid Id</th>";
-	echo "<th>Delete</th>";
-	echo "</tr>";
-	
-	$i=1;
-	$que=mysqli_query($conn,"select * from user");
-	
-	while($row=mysqli_fetch_array($que))
-	{
-		echo "<tr>";
-		echo "<td>".$i."</td>";
-		echo "<td>".$row['name']."</td>";
-		echo "<td>".$row['email']."</td>";
-		echo "<td>".$row['mobile']."</td>";
-		echo "<td>".$row['programme']."</td>";
-		echo "<td>".$row['semester']."</td>";
-		echo "<td>".$row['regid']."</td>";
-		
-		
-		
-		echo "<td class='text-center'><a href='#' onclick='deletes($row[id])'><span class='glyphicon glyphicon-remove' style=color:red;></span></a></td>";
-		
-		
-		echo "</tr>";
-		$i++;
-	}
-	
+defined('APP_BOOTSTRAPPED') || exit;
+
+$rows = db_all('SELECT id, name, email, mobile, programme, semester, created_at FROM students ORDER BY name');
 ?>
+<h1 class="page-header">Manage students</h1>
+<?php if (!$rows): ?>
+    <p>No students have registered yet.</p>
+<?php else: ?>
+<div class="table-responsive">
+<table class="table table-bordered table-striped table-hover">
+    <tr class="success">
+        <th>#</th><th>Name</th><th>Email</th><th>Mobile</th><th>Programme</th><th>Semester</th><th>Registered</th><th>Delete</th>
+    </tr>
+    <?php foreach ($rows as $i => $row): ?>
+    <tr>
+        <td><?= $i + 1 ?></td>
+        <td><?= e($row['name']) ?></td>
+        <td><?= e($row['email']) ?></td>
+        <td><?= e($row['mobile']) ?></td>
+        <td><?= e($row['programme']) ?></td>
+        <td><?= e(strtoupper($row['semester'])) ?></td>
+        <td><?= e($row['created_at']) ?></td>
+        <td class="text-center">
+            <form method="post" action="delete_student.php" onsubmit="return confirm('Delete this student and their feedback?');" style="display:inline">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int) $row['id'] ?>">
+                <button class="btn btn-link" style="padding:0" title="Delete"><span class="glyphicon glyphicon-remove" style="color:red"></span></button>
+            </form>
+        </td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+</div>
+<?php endif; ?>

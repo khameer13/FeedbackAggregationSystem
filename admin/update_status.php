@@ -1,17 +1,15 @@
 <?php
-include('../dbconfig.php');
-	
-	$user_id=$_GET['user_id'];
-	$status=$_GET['status'];
-	if($status)
-	{
-	mysqli_query($conn,"update faculty SET status='0' where id='$user_id'");
-	header('location:dashboard.php?info=show_faculty');
-	}
-	else
-	{
-	mysqli_query($conn,"update faculty SET status='1' where id='$user_id'");
-	header('location:dashboard.php?info=show_faculty');
-	}
-	
-	?>
+require_once __DIR__ . '/../dbconfig.php';
+require_role('admin', 'index.php');
+
+if (!is_post()) {
+    redirect('dashboard.php?info=show_faculty');
+}
+csrf_verify();
+
+$id = (int) post('id');
+if ($id > 0) {
+    db_exec('UPDATE faculty SET is_active = 1 - is_active WHERE id = ?', [$id]);
+    $_SESSION['flash'] = ['type' => 'success', 'message' => 'Faculty status updated.'];
+}
+redirect('dashboard.php?info=show_faculty');

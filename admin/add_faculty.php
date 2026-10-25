@@ -1,125 +1,79 @@
 <?php
-error_reporting(1);
-	include('../dbconfig.php');
-	extract($_POST);
-	if(isset($save))
-	{	
-		if(strlen($mob)<10 || strlen($mob)>10)
-		{
-		$err="<font color='red'>Mobile number must be 10 digit</font>";
-		}
-		else
-		{
-		//for auto genrate Password
-		/*
-		$x=rand(1,99);
-		$p= md5($x);
-		$pass=substr($p,1,6);
-		*/
-		//for user_alias
-		$temp=substr($name,0,4);
-		$temp1=substr($mob,0,4);
-		$user_name=$temp.$temp1;
-		
-$q=mysqli_query($conn,"select * from faculty where email='$email'");
-	$r=mysqli_num_rows($q);	
-	if($r)
-	{
-	$err="<font color='red'>This email already exists choose diff email.</font>";
-	}
-	else
-	{	
-		mysqli_query($conn,"insert into faculty values('','$user_name','$name','$Designation','$prg','$sem','$email','$pass','$mob',now(),'0')");
-		
-	$subject ="New User Account Creation";
-	$from="info@phptpoint.com";
-	$message ="User name: ".$user_name." Password ".$pass;
-    $headers = "From:".$from;
-    mail($email,$subject,$message,$headers);
-		
-	$err="<font color='green'>New Faculty Successfully Added.</font>";
-	}
-	}
-}	
+defined('APP_BOOTSTRAPPED') || exit;
 
+$message = '';
+$v = ['name' => '', 'designation' => '', 'email' => '', 'programme' => '', 'semester' => '', 'mobile' => ''];
+
+if (is_post()) {
+    csrf_verify();
+    foreach ($v as $key => $_) {
+        $v[$key] = post($key);
+    }
+    $password = $_POST['password'] ?? '';
+    $confirm  = $_POST['confirm_password'] ?? '';
+    $password = is_string($password) ? $password : '';
+    $confirm  = is_string($confirm) ? $confirm : '';
+
+    $errors = [];
+    if ($v['name'] === '' || $v['designation'] === '' || $v['programme'] === '') {
+        $errors[] = 'Name, designation and programme are required.';
+    }
+    if (!filter_var($v['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Please enter a valid email address.';
+    }
+    if (!in_array($v['semester'], SEMESTERS, true)) {
+        $errors[] = 'Please select a semester.';
+    }
+    if (!valid_mobile($v['mobile'])) {
+        $errors[] = 'Mobile number must be 10 digits.';
+    }
+    if ($problem = password_problem($password, $confirm)) {
+        $errors[] = $problem;
+    }
+    if (!$errors && db_value('SELECT 1 FROM faculty WHERE email = ?', [$v['email']])) {
+        $errors[] = 'This email already exists. Choose a different email.';
+    }
+
+    if ($errors) {
+        $message = alert(implode(' ', $errors));
+    } else {
+        db_exec(
+            'INSERT INTO faculty (name, designation, programme, semester, email, password_hash, mobile)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$v['name'], $v['designation'], $v['programme'], $v['semester'], $v['email'],
+             password_hash($password, PASSWORD_DEFAULT), $v['mobile']]
+        );
+        // The password is shared with the faculty member out of band; it is never emailed in plain text.
+        $_SESSION['flash'] = ['type' => 'success', 'message' => 'New faculty member added.'];
+        redirect('dashboard.php?info=show_faculty');
+    }
+}
 ?>
-
-
-<h1 class="page-header">Add Faculty</h1>
-<div class="col-lg-8" style="margin:15px;">
-	<form method="post">
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label><?php echo @$err;?></label>
-        </div>
-   	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Name:</label>
-            	<input type="text" value="<?php echo @$name;?>" name="name" class="form-control" required>
-        </div>
-   	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Designation:</label>
-            	<input type="text" value="<?php echo @$Designation;?>" name="Designation" class="form-control" required>
-        </div>
-   	</div>
- 	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Email :</label>
-            	<input type="email" value="<?php echo @$email;?>"  name="email" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Password :</label>
-            	<input type="password" value="<?php echo @$pass;?>"  name="pass" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Programme:</label>
-  <input type="text"  name="prg" value="<?php echo @$prg;?>" class="form-control" required>
-        </div>
-    </div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Semester</label>
-  <select name="sem" class="form-control" required>
-					
-					<option>i</option>
-					<option>ii</option>
-					<option>iii</option>
-					<option>iv</option>
-					<option>v</option>
-					<option>vi</option>
-					<option>vii</option>
-					<option>viii</option>
-					</select>
-        </div>
-    </div>
-                  
-	<div class="control-group form-group">
-    	<div class="controls">
-        	<label>Mobile Number:</label>
-            	<input type="number" id="mob" value="<?php echo @$mob;?>" class="form-control" maxlength="10" name="mob"  required>
-        </div>
-  	</div>
-	
-	<div class="control-group form-group">
-    	<div class="controls">
-            	<input type="submit" class="btn btn-success" name="save" value="Add New Faculty">
-        </div>
-  	</div>
-	</form>
-
-
+<h1 class="page-header">Add faculty</h1>
+<div class="col-lg-8">
+    <?= $message ?>
+    <form method="post" action="dashboard.php?info=add_faculty">
+        <?= csrf_field() ?>
+        <div class="form-group"><label>Name</label>
+            <input type="text" name="name" class="form-control" maxlength="50" value="<?= e($v['name']) ?>" required></div>
+        <div class="form-group"><label>Designation</label>
+            <input type="text" name="designation" class="form-control" maxlength="100" value="<?= e($v['designation']) ?>" required></div>
+        <div class="form-group"><label>Email</label>
+            <input type="email" name="email" class="form-control" maxlength="100" value="<?= e($v['email']) ?>" required></div>
+        <div class="form-group"><label>Password (at least <?= PASSWORD_MIN_LENGTH ?> characters)</label>
+            <input type="password" name="password" class="form-control" minlength="<?= PASSWORD_MIN_LENGTH ?>" required></div>
+        <div class="form-group"><label>Confirm password</label>
+            <input type="password" name="confirm_password" class="form-control" minlength="<?= PASSWORD_MIN_LENGTH ?>" required></div>
+        <div class="form-group"><label>Programme</label>
+            <input type="text" name="programme" class="form-control" maxlength="50" value="<?= e($v['programme']) ?>" required></div>
+        <div class="form-group"><label>Semester</label>
+            <select name="semester" class="form-control" required>
+                <?php foreach (SEMESTERS as $s): ?>
+                    <option value="<?= e($s) ?>" <?= $v['semester'] === $s ? 'selected' : '' ?>><?= e(strtoupper($s)) ?></option>
+                <?php endforeach; ?>
+            </select></div>
+        <div class="form-group"><label>Mobile number</label>
+            <input type="tel" name="mobile" class="form-control" pattern="[0-9]{10}" value="<?= e($v['mobile']) ?>" required></div>
+        <button type="submit" class="btn btn-success">Add faculty</button>
+    </form>
 </div>
